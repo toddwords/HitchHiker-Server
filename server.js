@@ -9,10 +9,10 @@ var io = socket(server);
 io.sockets.on('connection', newConnection);
 
 function newConnection(socket){
-	console.log('new connection: ' + socket.id)
+  console.log('new connection: ' + socket.id)
   socket.join("lobby")
   socket.room = "lobby"
-	socket.on("disconnect", function(){
+  socket.on("disconnect", function(){
     //if(socket.role == "guide"){onGuideDisconnect()}    
    // else{
     if(socket.room !== "lobby"){
@@ -32,7 +32,7 @@ function newConnection(socket){
     socket.join("lobby")
   })
   
-	socket.on('newMsg', newMsg);
+  socket.on('newMsg', newMsg);
   socket.on('newPage', newPage);
   socket.on('changeText', changeText);
   socket.on('joinRoom', function(data){
@@ -41,7 +41,8 @@ function newConnection(socket){
     socket.nickname = data.username
     var roomInList = data.room in io.sockets.adapter.rooms
     console.log("role: "+ data.role)
-    if(roomInList && data.role == "guide" && io.sockets.adapter.rooms[data.room].guide !== socket.id || data.room == "lobby" && data.role == "guide"){
+    console.log("nickname: "+ socket.nickname)
+    if(roomInList && data.role == "guide" && io.sockets.adapter.rooms[data.room].guide !== socket.nickname || data.room == "lobby" && data.role == "guide"){
       socket.emit("toClient", {error:"There is already a guide in this room"}); 
       console.log("should send error to client");
 
@@ -49,12 +50,13 @@ function newConnection(socket){
       // if(socket.room){socket.leave(socket.room)};    
       socket.join(data.room);
       socket.leave('lobby')
-      io.sockets.adapter.rooms[data.room].guide = socket.id
       console.log(io.sockets.adapter.rooms[data.room])
-      if(!roomInList){socket.broadcast.to("lobby").emit('toClient', {rooms: io.sockets.adapter.rooms})}
+      if(!roomInList){
+        io.sockets.adapter.rooms[data.room].guide = socket.nickname
+        socket.broadcast.to("lobby").emit('toClient', {rooms: io.sockets.adapter.rooms})
+      }
       socket.room = data.room;
       socket.role = data.role
-      io.sockets.adapter.rooms[socket.room].guide = socket.id
       console.log(data.username+ " has joined " + data.room)
       console.log(io.sockets.adapter.rooms);
       socket.emit("toClient",{joinRoomSuccess:true, room:data.room})
@@ -73,6 +75,9 @@ function newConnection(socket){
     if(socket.room !== "lobby")
       io.in(socket.room).emit('guideEvent', data)
   })
+  socket.on("getCurrentPage", function(data){
+  	socket.emit('newPage', {url:io.sockets.adapter.rooms[socket.room].url})
+  })
   socket.on('status', sendStatus)
   function sendStatus(data){
     console.log("status received")
@@ -83,7 +88,7 @@ function newConnection(socket){
     // console.log(io.sockets.adapter.rooms[socket.room].guide)
     io.in(socket.room).emit("status", data)
   }
-	function newMsg(data){
+  function newMsg(data){
     data.msg = sanitize(data.msg)
     io.in(socket.room).emit('newMsg', data)
   }
@@ -95,13 +100,14 @@ function newConnection(socket){
     if(isURL(url)){
       if(url.indexOf('http') < 0){url = "http://"+url}
       if(socket.room !== "lobby")
-		    socket.broadcast.to(socket.room).emit('newPage', {url:url});
+      	io.sockets.adapter.rooms[socket.room].url = url
+        socket.broadcast.to(socket.room).emit('newPage', {url:url});
     }
-		//the line below will send to everyone including the client
-		// io.sockets.emit('mouse', data);
-		console.log(data)
+    //the line below will send to everyone including the client
+    // io.sockets.emit('mouse', data);
+    console.log(data)
     console.log(socket.room)
-	}
+  }
   function changeText(data){
     data.text = sanitize(data.text);
     socket.broadcast.to(socket.room).emit('changeText', data)
@@ -145,12 +151,9 @@ function sanitize(string) {
   const map = {
       '&': '&amp;',
       '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#x27;',
-      "/": '&#x2F;',
+      '>': '&gt;'
   };
-  const reg = /[&<>"'/]/ig;
+  const reg = /[&<>]/ig;
   if(string)
     return string.replace(reg, (match)=>(map[match]));
   else
