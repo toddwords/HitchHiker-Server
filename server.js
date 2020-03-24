@@ -42,7 +42,8 @@ function newConnection(socket){
     var roomInList = data.room in io.sockets.adapter.rooms
     console.log("role: "+ data.role)
     console.log("nickname: "+ socket.nickname)
-    if(roomInList && data.role == "guide" && io.sockets.adapter.rooms[data.room].guide !== socket.nickname || data.room == "lobby" && data.role == "guide"){
+    //prevent unauthorized multiple guides
+    if(roomInList && data.role == "guide" && !io.sockets.adapter.rooms[data.room].guide.includes(socket.nickname) || data.room == "lobby" && data.role == "guide"){
       socket.emit("toClient", {error:"There is already a guide in this room"}); 
       console.log("should send error to client");
 
@@ -52,7 +53,7 @@ function newConnection(socket){
       socket.leave('lobby')
       console.log(io.sockets.adapter.rooms[data.room])
       if(!roomInList){
-        io.sockets.adapter.rooms[data.room].guide = socket.nickname
+        io.sockets.adapter.rooms[data.room].guide = [socket.nickname]
         socket.broadcast.to("lobby").emit('toClient', {rooms: io.sockets.adapter.rooms})
       }
       socket.room = data.room;
@@ -76,7 +77,16 @@ function newConnection(socket){
       io.in(socket.room).emit('guideEvent', data)
   })
   socket.on("getCurrentPage", function(data){
-  	socket.emit('newPage', {url:io.sockets.adapter.rooms[socket.room].url})
+    console.log(io.sockets.adapter.rooms[socket.room].url)
+    socket.emit('newPage', {url:io.sockets.adapter.rooms[socket.room].url})
+  })
+  socket.on('addGuide', addGuide)
+  socket.on('swapGuide', function(data){
+    addGuide(data)
+    getRoom().guide.filter(e => e !== socket.nickname)
+    socket.role = "audience"
+    serverMsg(socket.nickname + " is no longer a guide")
+    socket.emit("becomeAudience")
   })
   socket.on('status', sendStatus)
   function sendStatus(data){
@@ -100,7 +110,7 @@ function newConnection(socket){
     if(isURL(url)){
       if(url.indexOf('http') < 0){url = "http://"+url}
       if(socket.room !== "lobby")
-      	io.sockets.adapter.rooms[socket.room].url = url
+        io.sockets.adapter.rooms[socket.room].url = url
         socket.broadcast.to(socket.room).emit('newPage', {url:url});
     }
     //the line below will send to everyone including the client
@@ -111,6 +121,29 @@ function newConnection(socket){
   function changeText(data){
     data.text = sanitize(data.text);
     socket.broadcast.to(socket.room).emit('changeText', data)
+  }
+  function addGuide(data){
+    let newGuideSocket = findSocketByUsername(data.username)
+    newGuideSocket.role = "guide"
+    io.sockets.adapter.rooms[socket.room].guide.push(data.username)
+    newGuideSocket.emit("becomeGuide")
+    serverMsg(data.username + " is now a guide")
+  }
+  function getRoom(){
+    return io.sockets.adapter.rooms[socket.room]
+  }
+  function findSocketByUsername(username){
+    if(!io.sockets.adapter.rooms[socket.room]){return false}
+      for (var clientId in io.sockets.adapter.rooms[socket.room].sockets ) {
+
+       //this is the socket of each client in the room.
+       var clientSocket = io.sockets.connected[clientId];
+
+       if(clientSocket.nickname == username){
+         return clientSocket
+       }
+
+      }
   }
   function onGuideDisconnect(){
     serverMsg("Guide has left the room. Closing room...")
@@ -146,6 +179,8 @@ function sendUsersInRoom (currentSocket){
     }
     currentSocket.emit('toClient', {users: usersInRoom})
 }
+
+
 
 function sanitize(string) {
   const map = {
