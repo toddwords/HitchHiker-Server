@@ -42,12 +42,16 @@ function newConnection(socket){
     var roomInList = data.room in io.sockets.adapter.rooms
     console.log("role: "+ data.role)
     console.log("nickname: "+ socket.nickname)
+    if(!roomInList && data.role == "audience"){
+      socket.emit("toClient", {error:"no room by that name in list. keep in mind room names are case sensitive"})
+    }
     //prevent unauthorized multiple guides
-    if(roomInList && data.role == "guide" && !io.sockets.adapter.rooms[data.room].guide.includes(socket.nickname) || data.room == "lobby" && data.role == "guide"){
+    else if(roomInList && data.role == "guide" && !io.sockets.adapter.rooms[data.room].guide.includes(socket.nickname) || data.room == "lobby" && data.role == "guide"){
       socket.emit("toClient", {error:"There is already a guide in this room"}); 
       console.log("should send error to client");
 
-    } else{
+    } 
+    else{
       // if(socket.room){socket.leave(socket.room)};    
       socket.join(data.room);
       socket.leave('lobby')
