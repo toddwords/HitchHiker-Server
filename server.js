@@ -6,8 +6,7 @@ console.log("server running");
 var socket = require("socket.io");
 var io = socket(server, {
   pingTimeout: 180000,
-  transports: ['websocket'],
-  allowUpgrades: false
+  upgradeTimeout: 30000
 });
 console.log(io)
 io.sockets.on("connection", newConnection);
