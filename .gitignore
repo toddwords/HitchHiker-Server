@@ -1,0 +1,4 @@
+node_modules/
+.ebextensions/
+.env
+*.zip
