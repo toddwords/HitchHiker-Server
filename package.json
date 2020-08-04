@@ -1,6 +1,6 @@
 {
   "name": "HitchHiker-Server",
-  "version": "0.0.1",
+  "version": "0.8.2",
   "description": "server for hitchhiker",
   "main": "server.js",
   "scripts": {
