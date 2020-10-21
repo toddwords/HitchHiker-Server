@@ -4,14 +4,17 @@ var server = app.listen(process.env.PORT || 3000);
 app.use(express.static("public"));
 console.log("server running");
 var socket = require("socket.io");
+const RTCMultiConnectionServer = require('rtcmulticonnection-server');
 var io = socket(server, {
   pingTimeout: 180000,
   upgradeTimeout: 30000
 });
+
 console.log(io)
 io.sockets.on("connection", newConnection);
 
 function newConnection(socket) {
+  RTCMultiConnectionServer.addSocket(socket, {port:3000});
   console.log("new connection: " + socket.id);
   socket.join("lobby");
   socket.room = "lobby";
@@ -76,7 +79,9 @@ function newConnection(socket) {
         error: "There is already a guide in this room"
       });
       console.log("should send error to client");
-    } else {
+    } 
+    //create/join room
+    else {
       // if(socket.room){socket.leave(socket.room)};
       socket.join(data.room);
       socket.leave("lobby");
