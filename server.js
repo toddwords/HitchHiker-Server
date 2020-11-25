@@ -5,16 +5,28 @@ app.use(express.static("public"));
 console.log("server running");
 var socket = require("socket.io");
 const RTCMultiConnectionServer = require('rtcmulticonnection-server');
-var io = socket(server, {
-  pingTimeout: 180000,
-  upgradeTimeout: 30000
-});
+var io = socket(server);
 
-console.log(io)
 io.sockets.on("connection", newConnection);
 
+let sessions = {};
+let heartbeat = setInterval(function(){
+  for(const room in sessions) {
+    console.log("room: "+room)
+    if(!io.sockets.adapter.rooms.has(room)){
+      delete sessions[room]
+    }
+    else{
+      for(const g in sessions[room].guide){
+        console.log("guide: "+g)
+        io.to(sessions[room].guide[g]).emit("heartbeat", sessions[room].audience)
+      }
+    }
+
+  }
+}, 1000)
 function newConnection(socket) {
-  RTCMultiConnectionServer.addSocket(socket, {port:3000});
+  RTCMultiConnectionServer.addSocket(socket);
   console.log("new connection: " + socket.id);
   socket.join("lobby");
   socket.room = "lobby";
@@ -32,18 +44,20 @@ function newConnection(socket) {
     //}
   });
   socket.on("leaveRoom", function(data) {
-    //if(socket.role == "guide"){onGuideDisconnect()}
-    if (socket.nickname)
+    if(socket.role == "guide"){onGuideDisconnect()}
+    else if (socket.nickname){
       newMsg({
         username: "server",
         msg: socket.nickname + " has left " + socket.room,
         color: [127, 127, 127]
       });
-    sendStatus({ msg: "disconnect" });
-    socket.leave(socket.room);
-    socket.room = "lobby";
-    socket.role = false;
-    socket.join("lobby");
+      sendStatus({ msg: "disconnect" });
+      delete sessions[socket.room].audience[socket.nickname];
+      socket.leave(socket.room);
+      socket.room = "lobby";
+      socket.role = false;
+      socket.join("lobby");
+    }
   });
 
   socket.on("newMsg", newMsg);
@@ -53,7 +67,7 @@ function newConnection(socket) {
     data.username = sanitize(data.username);
     data.room = sanitize(data.room);
     socket.nickname = data.username;
-    var roomInList = data.room in io.sockets.adapter.rooms;
+    var roomInList = io.sockets.adapter.rooms.has(data.room);
     console.log("role: " + data.role);
     console.log("nickname: " + socket.nickname);
     if(!data.room){
@@ -69,10 +83,7 @@ function newConnection(socket) {
       });
     }
     //prevent unauthorized multiple guides
-    else if (
-      (roomInList &&
-        data.role == "guide" &&
-        !io.sockets.adapter.rooms[data.room].guide.includes(socket.nickname)) ||
+    else if ((roomInList && data.role == "guide" && !(sessions[data.room].guide.hasOwnProperty(socket.nickname))) ||
       (data.room == "lobby" && data.role == "guide")
     ) {
       socket.emit("toClient", {
@@ -85,12 +96,18 @@ function newConnection(socket) {
       // if(socket.room){socket.leave(socket.room)};
       socket.join(data.room);
       socket.leave("lobby");
-      console.log(io.sockets.adapter.rooms[data.room]);
+      // console.log(io.sockets.adapter);
+      // console.log(io.sockets.adapter.rooms);
       if (!roomInList) {
-        io.sockets.adapter.rooms[data.room].guide = [socket.nickname];
-        socket.broadcast
-          .to("lobby")
-          .emit("toClient", { rooms: io.sockets.adapter.rooms });
+        
+        sessions[data.room] = {guide:{}, audience: {}};
+        sessions[data.room].guide[socket.nickname] = socket.id;
+        socket.broadcast.to("lobby").emit("toClient", { rooms: io.sockets.adapter.rooms });
+        console.log(sessions)
+      }
+      else {
+        sessions[data.room].audience[socket.nickname] = {socket: socket.id, status: "has joined room "+data.room}
+        console.log(sessions)
       }
       socket.room = data.room;
       socket.role = data.role;
@@ -115,9 +132,12 @@ function newConnection(socket) {
   socket.on("guideEvent", function(data) {
     if (socket.room !== "lobby") io.in(socket.room).emit("guideEvent", data);
   });
+  socket.on("inviteLobby", function(){
+    console.log("invite message received")
+    socket.to("lobby").emit("newMsg", {username: "server", msg: socket.nickname + " invites you to join the room: "+socket.room, color: [127, 127, 127] })
+  })
   socket.on("getCurrentPage", function(data) {
-    console.log(io.sockets.adapter.rooms[socket.room].url);
-    socket.emit("newPage", { url: io.sockets.adapter.rooms[socket.room].url });
+    socket.emit("newPage", { url: sessions[socket.room].url });
   });
   socket.on("addGuide", addGuide);
   socket.on("swapGuide", function(data) {
@@ -127,7 +147,13 @@ function newConnection(socket) {
     serverMsg(socket.nickname + " is no longer a guide");
     socket.emit("becomeAudience");
   });
-  socket.on("status", sendStatus);
+  socket.on("status", updateStatus);
+  function updateStatus(data){
+    let status = sanitize(data.msg);
+    if(sessions[socket.room] && sessions[socket.room].audience[socket.nickname]){
+      sessions[socket.room].audience[socket.nickname].status = status;
+    }
+  }
   function sendStatus(data) {
     console.log("status received");
     data.username = socket.nickname;
@@ -151,7 +177,7 @@ function newConnection(socket) {
         url = "http://" + url;
       }
       if (socket.room !== "lobby")
-        io.sockets.adapter.rooms[socket.room].url = url;
+        sessions[socket.room].url = url;
       socket.broadcast.to(socket.room).emit("newPage", { url: url });
     }
     //the line below will send to everyone including the client
@@ -166,34 +192,26 @@ function newConnection(socket) {
   function addGuide(data) {
     let newGuideSocket = findSocketByUsername(data.username);
     newGuideSocket.role = "guide";
-    io.sockets.adapter.rooms[socket.room].guide.push(data.username);
-    newGuideSocket.emit("becomeGuide");
+    console.log(sessions)
+    sessions[socket.room].guide[data.username] = newGuideSocket;
+    socket.broadcast.to(newGuideSocket).emit("becomeGuide");
     serverMsg(data.username + " is now a guide");
   }
   function getRoom() {
-    return io.sockets.adapter.rooms[socket.room];
+    return sessions[socket.room];
   }
   function findSocketByUsername(username) {
-    if (!io.sockets.adapter.rooms[socket.room]) {
-      return false;
-    }
-    for (var clientId in io.sockets.adapter.rooms[socket.room].sockets) {
-      //this is the socket of each client in the room.
-      var clientSocket = io.sockets.connected[clientId];
-
-      if (clientSocket.nickname == username) {
-        return clientSocket;
-      }
-    }
+    return sessions[socket.room].audience[username].socket
   }
   function onGuideDisconnect() {
     serverMsg("Guide has left the room. Closing room...");
     setTimeout(function() {
-      io.of("/")
-        .in(socket.room)
-        .clients.forEach(function(s) {
+      io.sockets.in(socket.room).sockets.forEach(function(s) {
           s.leave(socket.room);
-          s.emit("toClient", { disconnected: true });
+          s.room = "lobby";
+          s.role = false;
+          s.join("lobby");
+          s.emit("reset")
         });
     }, 3000);
   }
@@ -209,18 +227,9 @@ function isURL(str) {
 }
 
 function sendUsersInRoom(currentSocket) {
-  var usersInRoom = [];
-  if (!io.sockets.adapter.rooms[currentSocket.room]) {
-    return false;
-  }
-  for (var clientId in io.sockets.adapter.rooms[currentSocket.room].sockets) {
-    //this is the socket of each client in the room.
-    var clientSocket = io.sockets.connected[clientId];
-
-    if (clientSocket.nickname) {
-      usersInRoom.push(clientSocket.nickname);
-    }
-  }
+  console.log(currentSocket.room)
+  // console.log(sessions)
+  var usersInRoom = sessions[currentSocket.room].audience;
   currentSocket.emit("toClient", { users: usersInRoom });
 }
 

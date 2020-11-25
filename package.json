@@ -1,6 +1,6 @@
 {
   "name": "HitchHiker-Server",
-  "version": "0.8.2",
+  "version": "0.9.6",
   "description": "server for hitchhiker",
   "main": "server.js",
   "scripts": {
@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "express": "^4.17.1",
-    "rtcmulticonnection-server": "^1.3.2",
-    "socket.io": "^2.3.0"
+    "socket.io": "^3.0.3",
+    "rtcmulticonnection-server": "^1.3.2"
   },
   "engines": {
     "node": "8.x"
