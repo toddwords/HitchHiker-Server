@@ -12,13 +12,13 @@ io.sockets.on("connection", newConnection);
 let sessions = {};
 let heartbeat = setInterval(function(){
   for(const room in sessions) {
-    console.log("room: "+room)
+    // console.log("room: "+room)
     if(!io.sockets.adapter.rooms.has(room)){
       delete sessions[room]
     }
     else{
       for(const g in sessions[room].guide){
-        console.log("guide: "+g)
+        // console.log("guide: "+g)
         io.to(sessions[room].guide[g]).emit("heartbeat", sessions[room].audience)
       }
     }
@@ -102,7 +102,7 @@ function newConnection(socket) {
         
         sessions[data.room] = {guide:{}, audience: {}};
         sessions[data.room].guide[socket.nickname] = socket.id;
-        socket.broadcast.to("lobby").emit("toClient", { rooms: io.sockets.adapter.rooms });
+        socket.to("lobby").emit("toClient", { rooms: io.sockets.adapter.rooms });
         console.log(sessions)
       }
       else {
@@ -178,9 +178,10 @@ function newConnection(socket) {
       if (url.indexOf("http") < 0) {
         url = "http://" + url;
       }
-      if (socket.room !== "lobby")
+      if (socket.room !== "lobby"){
         sessions[socket.room].url = url;
-      socket.broadcast.to(socket.room).emit("newPage", { url: url });
+      }
+      socket.to(socket.room).emit("newPage", { url: url });
     }
     //the line below will send to everyone including the client
     // io.sockets.emit('mouse', data);
@@ -196,7 +197,7 @@ function newConnection(socket) {
     newGuideSocket.role = "guide";
     console.log(sessions)
     sessions[socket.room].guide[data.username] = newGuideSocket;
-    socket.broadcast.to(newGuideSocket).emit("becomeGuide");
+    io.to(newGuideSocket).emit("becomeGuide");
     serverMsg(data.username + " is now a guide");
   }
   function getRoom() {
