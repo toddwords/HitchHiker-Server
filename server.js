@@ -137,7 +137,9 @@ function newConnection(socket) {
     socket.to("lobby").emit("newMsg", {username: "server", msg: socket.nickname + " invites you to join the room: "+socket.room, color: [127, 127, 127] })
   })
   socket.on("getCurrentPage", function(data) {
-    socket.emit("newPage", { url: sessions[socket.room].url });
+    if(sessions[socket.room] && sessions[socket.room].url){
+      socket.emit("newPage", { url: sessions[socket.room].url });
+    }
   });
   socket.on("addGuide", addGuide);
   socket.on("swapGuide", function(data) {
