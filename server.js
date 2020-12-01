@@ -180,8 +180,9 @@ function newConnection(socket) {
       }
       if (socket.room !== "lobby"){
         sessions[socket.room].url = url;
+        socket.to(socket.room).emit("newPage", { url: url });
       }
-      socket.to(socket.room).emit("newPage", { url: url });
+      
     }
     //the line below will send to everyone including the client
     // io.sockets.emit('mouse', data);
