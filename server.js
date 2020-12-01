@@ -120,7 +120,7 @@ function newConnection(socket) {
         color: [127, 127, 127]
       });
       sendStatus({ msg: "joined" });
-      sendUsersInRoom(socket);
+      // sendUsersInRoom(socket);
     }
   });
   socket.on("getRooms", function(data) {
