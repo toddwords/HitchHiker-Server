@@ -131,7 +131,20 @@ function newConnection(socket) {
     sendUsersInRoom(socket);
   });
   socket.on("guideEvent", function(data) {
-    if (socket.room !== "lobby") io.in(socket.room).emit("guideEvent", data);
+    if (socket.room !== "lobby" && sessions[socket.room]){
+      if(data.type == "playSound" && data.loop){
+        if(sessions[socket.room].sounds){
+          sounds.push(data);
+        }
+        else{
+          sessions[socket.room].sounds = [data]
+        }
+      }
+      if(data.type == "stopAudio"){
+        sessions[socket.room].sounds = [];
+      }
+      io.in(socket.room).emit("guideEvent", data);
+    }
   });
   socket.on("inviteLobby", function(){
     console.log("invite message received")
@@ -140,6 +153,11 @@ function newConnection(socket) {
   socket.on("getCurrentPage", function(data) {
     if(sessions[socket.room] && sessions[socket.room].url){
       socket.emit("newPage", { url: sessions[socket.room].url });
+      if(sessions[socket.room].sounds){
+        for (let index = 0; index < sessions[socket.room].sounds.length; index++) {
+           socket.emit("guideEvent", sessions[socket.room].sounds[index]);
+        }
+      }
     }
   });
   socket.on("addGuide", addGuide);
