@@ -134,7 +134,7 @@ function newConnection(socket) {
     if (socket.room !== "lobby" && sessions[socket.room]){
       if(data.type == "playSound" && data.loop){
         if(sessions[socket.room].sounds){
-          sounds.push(data);
+          sessions[socket.room].sounds.push(data);
         }
         else{
           sessions[socket.room].sounds = [data]
