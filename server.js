@@ -6,7 +6,7 @@ console.log("server running");
 var socket = require("socket.io");
 const RTCMultiConnectionServer = require('rtcmulticonnection-server');
 // var io = socket(server);
-var io = socket(server, {transports:['websocket'], allowUpgrades:false});
+var io = socket(server);
 
 io.sockets.on("connection", newConnection);
 
