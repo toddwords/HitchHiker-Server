@@ -6,7 +6,10 @@ console.log("server running");
 var socket = require("socket.io");
 const RTCMultiConnectionServer = require('rtcmulticonnection-server');
 // var io = socket(server);
-var io = socket(server);
+var io = socket(server, {
+  pingTimeout: 25000,
+  pingInterval: 10000,
+});
 
 io.sockets.on("connection", newConnection);
 
@@ -31,7 +34,7 @@ function newConnection(socket) {
   console.log("new connection: " + socket.id);
   socket.join("lobby");
   socket.room = "lobby";
-  socket.on("disconnect", function() {
+  socket.on("disconnect", function(reason) {
     //if(socket.role == "guide"){onGuideDisconnect()}
     // else{
     if (socket.room !== "lobby") {
@@ -41,6 +44,7 @@ function newConnection(socket) {
         color: [127, 127, 127]
       });
       sendStatus({ msg: "disconnect" });
+      console.log(reason)
     }
     //}
   });
