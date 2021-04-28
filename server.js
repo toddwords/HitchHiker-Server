@@ -175,7 +175,7 @@ function newConnection(socket) {
   socket.on("status", updateStatus);
   function updateStatus(data){
     let status = sanitize(data.msg);
-    if(sessions[socket.room] && sessions[socket.room]?.audience[socket.nickname]){
+    if(sessions[socket.room] && sessions[socket.room].audience[socket.nickname]){
       sessions[socket.room]?.audience[socket.nickname]?.status = status;
     }
   }
