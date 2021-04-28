@@ -57,7 +57,7 @@ function newConnection(socket) {
         color: [127, 127, 127]
       });
       sendStatus({ msg: "disconnect" });
-      delete sessions[socket.room].audience[socket.nickname];
+      delete sessions[socket.room]?.audience[socket.nickname];
       socket.leave(socket.room);
       socket.room = "lobby";
       socket.role = false;
@@ -175,8 +175,8 @@ function newConnection(socket) {
   socket.on("status", updateStatus);
   function updateStatus(data){
     let status = sanitize(data.msg);
-    if(sessions[socket.room] && sessions[socket.room].audience[socket.nickname]){
-      sessions[socket.room].audience[socket.nickname].status = status;
+    if(sessions[socket.room] && sessions[socket.room]?.audience[socket.nickname]){
+      sessions[socket.room]?.audience[socket.nickname]?.status = status;
     }
   }
   function sendStatus(data) {
@@ -228,7 +228,7 @@ function newConnection(socket) {
     return sessions[socket.room];
   }
   function findSocketByUsername(username) {
-    return sessions[socket.room].audience[username].socket
+    return sessions[socket.room]?.audience[username]?.socket
   }
   function onGuideDisconnect() {
     serverMsg("Guide has left the room. Closing room...");
