@@ -176,7 +176,7 @@ function newConnection(socket) {
   function updateStatus(data){
     let status = sanitize(data.msg);
     if(sessions[socket.room] && sessions[socket.room].audience[socket.nickname]){
-      sessions[socket.room]?.audience[socket.nickname]?.status = status;
+      sessions[socket.room].audience[socket.nickname].status = status;
     }
   }
   function sendStatus(data) {
@@ -228,7 +228,8 @@ function newConnection(socket) {
     return sessions[socket.room];
   }
   function findSocketByUsername(username) {
-    return sessions[socket.room]?.audience[username]?.socket
+    if(sessions[socket.room] && sessions[socket.room].audience && sessions[socket.room].audience[username] && sessions[socket.room].audience[username].socket)
+      return sessions[socket.room].audience[username].socket
   }
   function onGuideDisconnect() {
     serverMsg("Guide has left the room. Closing room...");
