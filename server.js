@@ -218,11 +218,13 @@ function newConnection(socket) {
   }
   function addGuide(data) {
     let newGuideSocket = findSocketByUsername(data.username);
-    newGuideSocket.role = "guide";
-    console.log(sessions)
-    sessions[socket.room].guide[data.username] = newGuideSocket;
-    io.to(newGuideSocket).emit("becomeGuide");
-    serverMsg(data.username + " is now a guide");
+    if(newGuideSocket){
+      newGuideSocket.role = "guide";
+      console.log(sessions)
+      sessions[socket.room].guide[data.username] = newGuideSocket;
+      io.to(newGuideSocket).emit("becomeGuide");
+      serverMsg(data.username + " is now a guide");
+    }
   }
   function getRoom() {
     return sessions[socket.room];
@@ -230,6 +232,8 @@ function newConnection(socket) {
   function findSocketByUsername(username) {
     if(sessions[socket.room] && sessions[socket.room].audience && sessions[socket.room].audience[username] && sessions[socket.room].audience[username].socket)
       return sessions[socket.room].audience[username].socket
+    else
+      return false
   }
   function onGuideDisconnect() {
     serverMsg("Guide has left the room. Closing room...");
