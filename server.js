@@ -57,7 +57,10 @@ function newConnection(socket) {
         color: [127, 127, 127]
       });
       sendStatus({ msg: "disconnect" });
-      delete sessions[socket.room].audience[socket.nickname];
+
+      if(sessions[socket.room] && sessions[socket.room].audience){
+        delete sessions[socket.room].audience[socket.nickname];
+      }
       socket.leave(socket.room);
       socket.room = "lobby";
       socket.role = false;
