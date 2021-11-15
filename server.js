@@ -49,8 +49,9 @@ function newConnection(socket) {
     //}
   });
   socket.on("leaveRoom", function(data) {
-    if(socket.role == "guide"){onGuideDisconnect()}
-    else if (socket.nickname){
+    // if(socket.role == "guide"){onGuideDisconnect()}
+    // else if (socket.nickname){
+    if(socket.nickname){
       newMsg({
         username: "server",
         msg: socket.nickname + " has left " + socket.room,
@@ -138,7 +139,7 @@ function newConnection(socket) {
     sendUsersInRoom(socket);
   });
   socket.on("guideEvent", function(data) {
-    if (socket.room !== "lobby" && sessions[socket.room]){
+    if (data && socket.room !== "lobby" && sessions[socket.room]){
       if(data.type == "playSound" && data.loop){
         if(sessions[socket.room].sounds){
           sessions[socket.room].sounds.push(data);
