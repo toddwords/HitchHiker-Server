@@ -49,9 +49,9 @@ function newConnection(socket) {
     //}
   });
   socket.on("leaveRoom", function(data) {
-    // if(socket.role == "guide"){onGuideDisconnect()}
-    // else if (socket.nickname){
-    if(socket.nickname){
+    if(socket.role == "guide"){onGuideDisconnect()}
+    else if (socket.nickname){
+    // if(socket.nickname){
       newMsg({
         username: "server",
         msg: socket.nickname + " has left " + socket.room,
